@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 from typing import List, Optional
 from urllib.parse import urljoin
 from utils.logger import setup_logger
+from playwright.sync_api import sync_playwright
+import asyncio
+from playwright.async_api import async_playwright as async_playwright_api
 
 # Setting up logger
 logger = setup_logger(__name__)
@@ -30,10 +33,8 @@ def scrape_chapter_links(manga_url: str) -> List[str]:
 
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # The selector is based on the provided HTML snippet
     chapter_elements = soup.select('div.pl-4.py-2.border.rounded-md a')
     
-    # Use the manga_url as the base to correctly resolve relative chapter links
     chapter_links = [urljoin(manga_url, element['href']) for element in chapter_elements if element.has_attr('href')]
     
     if not chapter_links:
@@ -41,10 +42,7 @@ def scrape_chapter_links(manga_url: str) -> List[str]:
     else:
         logger.info(f"Found {len(chapter_links)} chapter links.")
         
-    # Reverse the list to show chapters in ascending order
     return chapter_links[::-1]
-
-from playwright.sync_api import sync_playwright
 
 def fetch_chapter_images(chapter_url: str) -> List[str]:
     """
@@ -56,12 +54,8 @@ def fetch_chapter_images(chapter_url: str) -> List[str]:
         page = browser.new_page()
         try:
             page.goto(chapter_url, wait_until='networkidle')
-            
-            # Wait for the images to be loaded
             page.wait_for_selector('img.object-cover.mx-auto')
-            
             image_urls = page.eval_on_selector_all('img.object-cover.mx-auto', 'elements => elements.map(el => el.src)')
-            
             logger.info(f"Found {len(image_urls)} images.")
             return image_urls
         except Exception as e:
@@ -70,80 +64,71 @@ def fetch_chapter_images(chapter_url: str) -> List[str]:
         finally:
             browser.close()
 
-def search_manga(query: str) -> List[dict]:
+async def search_manga_async(query: str, page_limit: int = 1) -> List[dict]:
     """
-    Searches for a manga on AsuraComic and returns a list of dictionaries
-    with title, latest_chapter, and link.
+    Asynchronously searches for a manga on AsuraComic with pagination and returns a list of dictionaries.
     """
-    # URL-encode the query
-    query = query.replace(" ", "+")
-    search_url = f"https://asuracomic.net/series?page=1&name={query}"
-    
-    logger.info(f"Searching for manga: '{query}'")
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        try:
-            page.goto(search_url, wait_until='networkidle')
-            html_content = page.content()
-        except Exception as e:
-            logger.error(f"Error fetching search page with Playwright: {e}")
-            return []
-        finally:
-            browser.close()
+    base_url = "https://asuracomic.net/"
+    query_encoded = query.replace(" ", "+")
+    all_results = []
 
-    if not html_content:
-        logger.error("Failed to fetch search page HTML with Playwright.")
-        return []
+    async with async_playwright_api() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
 
-    soup = BeautifulSoup(html_content, 'html.parser')
-    
-    results = []
-    
-    # The selector is based on the provided HTML snippet
-    manga_elements = soup.select('div.grid a[href*="/series/"]')
+        for page_num in range(1, page_limit + 1):
+            search_url = f"{base_url}series?page={page_num}&name={query_encoded}"
+            logger.info(f"Searching for manga: '{query}' on page {page_num}")
 
-    for element in manga_elements:
-        title_element = element.select_one('span.font-bold')
-        if not title_element:
-            continue
+            try:
+                await page.goto(search_url, wait_until='networkidle', timeout=60000)
+                await page.wait_for_selector("a[href^='series/']", timeout=10000)
+                
+                blocks = await page.query_selector_all("a[href^='series/']")
+                if not blocks:
+                    logger.info(f"No more results found on page {page_num}.")
+                    break
+
+                for block in blocks:
+                    href = await block.get_attribute("href")
+                    title_el = await block.query_selector("span.block.font-bold")
+                    chapter_el = await block.query_selector("span.text-\\[13px\\].text-\\[\\#999\\]")
+
+                    if not (title_el and chapter_el):
+                        continue
+
+                    title = await title_el.inner_text()
+                    latest_chapter = await chapter_el.inner_text()
+                    
+                    all_results.append({
+                        "title": title.strip(),
+                        "latest_chapter": latest_chapter.strip(),
+                        "link": urljoin(base_url, href)
+                    })
+            except Exception as e:
+                logger.error(f"An error occurred on page {page_num}: {e}")
+                break
         
-        title = title_element.text.strip()
-        
-        link = element['href']
-        
-        latest_chapter_element = title_element.find_next_sibling('span')
-        latest_chapter = latest_chapter_element.text.strip() if latest_chapter_element else "No chapter found"
+        await browser.close()
 
-        results.append({
-            "title": title,
-            "latest_chapter": latest_chapter,
-            "link": urljoin(search_url, link)
-        })
-
-    if not results:
+    if not all_results:
         logger.warning(f"No manga found for '{query}'. The selectors might be outdated.")
     else:
-        logger.info(f"Found {len(results)} manga for '{query}'.")
+        logger.info(f"Found {len(all_results)} manga for '{query}'.")
         
-    return results
+    return all_results
+
+def search_manga(query: str, page_limit: int = 1) -> List[dict]:
+    """
+    Synchronous wrapper for search_manga_async.
+    """
+    return asyncio.run(search_manga_async(query, page_limit))
+
 if __name__ == '__main__':
     # Example usage for testing
-    test_url = "https://asuracomic.net/series/return-of-the-apocalypse-class-death-knight-bc6665d9"
-    links = scrape_chapter_links(test_url)
-    if links:
-        print("Chapter Links:")
-        for link in links:
-            print(link)
-        
-        # Test fetching images from the first chapter
-        if links:
-            first_chapter_url = links[0]
-            if not first_chapter_url.startswith('http'):
-                first_chapter_url = f"https://asuracomic.net/series/{first_chapter_url}"
-            images = fetch_chapter_images(first_chapter_url)
-            if images:
-                print("\nImages from first chapter:")
-                for img in images:
-                    print(img)
+    test_query = "Solo"
+    results = search_manga(test_query, page_limit=2)
+    if results:
+        print(f"Found {len(results)} results for '{test_query}':")
+        for res in results:
+            print(f"  - {res['title']} ({res['latest_chapter']})")

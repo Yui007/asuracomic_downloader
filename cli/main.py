@@ -24,13 +24,14 @@ def interactive():
 @app.command()
 def search(
     query: str = typer.Argument(..., help="The search query for the manga."),
+    pages: int = typer.Option(1, "--pages", "-p", help="The number of pages to search."),
 ):
     """
     Search for a manga on AsuraComic.
     """
     console.print(f"[bold green]Searching for:[/] {query}")
     
-    search_results = search_manga(query)
+    search_results = search_manga(query, page_limit=pages)
     
     if not search_results:
         console.print("[bold red]No manga found for your query.[/]")

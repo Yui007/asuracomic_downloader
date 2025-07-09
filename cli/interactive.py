@@ -27,13 +27,21 @@ def interactive_cli():
 
     if choice == "search":
         query = Prompt.ask("Enter the manga name to search for")
+        page_limit_str = Prompt.ask("How many pages to search?", default="1")
+        try:
+            page_limit = int(page_limit_str)
+        except ValueError:
+            console.print("[bold red]Invalid number of pages. Defaulting to 1.[/bold red]")
+            page_limit = 1
+
         with console.status(f"[bold green]Searching for '{query}'..."):
-            search_results = scraper.search_manga(query)
+            search_results = scraper.search_manga(query, page_limit=page_limit)
 
         if not search_results:
             console.print("[bold red]No manga found for your query.[/bold red]")
             return
 
+        from rich.table import Table
         table = Table(title="Search Results")
         table.add_column("Num", style="cyan")
         table.add_column("Title", style="magenta")

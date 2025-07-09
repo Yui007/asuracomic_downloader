@@ -17,6 +17,30 @@ This document provides instructions on how to use the command-line interface (CL
 
 ## Commands
 
+### `search`
+
+Searches for a manga on AsuraComic.
+
+**Usage:**
+
+```bash
+python cli/main.py search [OPTIONS] QUERY
+```
+
+**Arguments:**
+
+*   `QUERY`: The search query for the manga. (Required)
+
+**Options:**
+
+*   `--pages, -p`: The number of pages to search. (Default: `1`)
+
+**Example:**
+
+```bash
+python cli/main.py search "Solo Leveling" --pages 2
+```
+
 ### `get-chapters`
 
 Scrapes and lists all available chapters for a given manga series.
@@ -100,7 +124,7 @@ python cli/main.py batch-download [OPTIONS] MANGA_URL
 
 ### `interactive`
 
-Launches an interactive TUI (Textual User Interface) to browse and download manga.
+Launches an interactive CLI to browse and download manga.
 
 **Usage:**
 
@@ -110,11 +134,10 @@ python cli/main.py interactive
 
 **Features:**
 
+*   **Search for Manga:** Search for your favorite manga and specify how many pages to look through.
 *   **Browse Manga:** Enter a manga series URL to see a list of all available chapters.
-*   **Select & Download:** Use the arrow keys to navigate the chapter list and press `Enter` to download a selected chapter.
-*   **Real-time Logs:** View download progress and logs in a separate panel.
-*   **Dark Mode:** Toggle dark mode by pressing `d`.
-*   **Quit:** Exit the application by pressing `q`.
+*   **Select & Download:** Choose chapters to download from a list.
+*   **Real-time Logs:** View download progress and logs.
 
 **Example:**
 
@@ -122,4 +145,4 @@ python cli/main.py interactive
 python cli/main.py interactive
 ```
 
-Upon launching, you will be prompted to enter a manga series URL. After entering the URL, the TUI will fetch and display the chapters for you to browse and download.
+Upon launching, you can choose to search for a manga or enter a URL directly. The interactive wizard will guide you through the process of selecting and downloading chapters.
