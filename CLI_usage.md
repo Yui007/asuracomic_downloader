@@ -84,7 +84,7 @@ python cli/main.py download [OPTIONS] CHAPTER_URL
 **Example:**
 
 ```bash
-python cli/main.py download "return-of-the-apocalypse-class-death-knight-bc6665d9/chapter/1" -o my_manga --format pdf --delete
+python cli/main.py download "https://asuracomic.net/series/return-of-the-apocalypse-class-death-knight-bc6665d9/chapter/1" -o my_manga --format pdf --delete
 ```
 
 ### `batch-download`
