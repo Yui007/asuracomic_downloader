@@ -10,6 +10,7 @@ from core.downloader import download_chapter, download_images_batch
 from typing import List
 from cli.interactive import interactive_cli
 from utils import sanitizer
+from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.config import MAX_WORKERS
 from playwright.sync_api import sync_playwright
@@ -78,6 +79,7 @@ def get_chapters(
 def download(
     chapter_url: str = typer.Argument(..., help="The URL of the chapter to download."),
     output_dir: str = typer.Option("downloads", "--output", "-o", help="The directory to save the downloaded chapter."),
+    format: str = typer.Option(None, "--format", "-f", help="The output format (pdf or cbz)."),
     browser=None,
 ):
     """
@@ -104,12 +106,31 @@ def download(
     
     console.print(f"[bold green]Download complete![/] Chapter saved to {chapter_folder}")
 
+    if format:
+        console.print(f"[bold blue]Converting chapter to {format}...[/]")
+        image_files = get_image_files(chapter_folder)
+        if not image_files:
+            console.print(f"[bold red]No images found in {chapter_folder} to convert.[/]")
+            return
+
+        output_path = os.path.join(output_dir, manga_name, f"{chapter_name}.{format}")
+        if format.lower() == 'pdf':
+            convert_to_pdf(image_files, output_path)
+        elif format.lower() == 'cbz':
+            convert_to_cbz(image_files, output_path)
+        else:
+            console.print(f"[bold red]Invalid format: {format}. Please use 'pdf' or 'cbz'.[/]")
+            return
+        
+        console.print(f"[bold green]Conversion complete![/] Saved to {output_path}")
+
 @app.command()
 def batch_download(
     manga_url: str = typer.Argument(..., help="The URL of the manga series on AsuraComic."),
     chapters: str = typer.Option(None, "--chapters", "-c", help="A comma-separated list of chapter numbers or a range (e.g., '1-5', '1,3,5')."),
     output_dir: str = typer.Option("downloads", "--output", "-o", help="The directory to save the downloaded chapters."),
     all_chapters: bool = typer.Option(False, "--all", help="Download all chapters."),
+    format: str = typer.Option(None, "--format", "-f", help="The output format (pdf or cbz)."),
 ):
     """
     Download a batch of chapters from a manga series in parallel.
@@ -187,6 +208,36 @@ def batch_download(
     download_images_batch(images_to_download)
 
     console.print("[bold green]Batch download complete![/]")
+
+    if format:
+        console.print(f"[bold blue]Converting chapters to {format}...[/]")
+        
+        downloaded_chapter_folders = set(item[1] for item in images_to_download)
+
+        for chapter_folder in downloaded_chapter_folders:
+            image_files = get_image_files(chapter_folder)
+            if not image_files:
+                console.print(f"[bold red]No images found in {chapter_folder} to convert.[/]")
+                continue
+
+            try:
+                manga_name = os.path.basename(os.path.dirname(chapter_folder))
+                chapter_name = os.path.basename(chapter_folder)
+                output_path = os.path.join(output_dir, manga_name, f"{chapter_name}.{format}")
+
+                if format.lower() == 'pdf':
+                    convert_to_pdf(image_files, output_path)
+                elif format.lower() == 'cbz':
+                    convert_to_cbz(image_files, output_path)
+                else:
+                    console.print(f"[bold red]Invalid format: {format}. Please use 'pdf' or 'cbz'.[/]")
+                    break 
+                
+                console.print(f"Converted {chapter_folder} to {output_path}")
+            except Exception as e:
+                console.print(f"[bold red]Failed to convert {chapter_folder}: {e}[/]")
+
+        console.print(f"[bold green]Conversion complete![/]")
 
 if __name__ == "__main__":
     app()
