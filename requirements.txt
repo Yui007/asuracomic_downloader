@@ -5,4 +5,4 @@ beautifulsoup4
 colorlog
 playwright
 Pillow
-reportlab
+natsort
