@@ -47,3 +47,16 @@ def convert_to_cbz(image_files: list[str], output_path: str):
     with zipfile.ZipFile(output_path, 'w') as cbz:
         for i, image_file in enumerate(image_files):
             cbz.write(image_file, f"{i+1:03d}{os.path.splitext(image_file)[1]}")
+
+def delete_images(image_files: list[str]):
+    """
+    Deletes a list of image files.
+
+    Args:
+        image_files: A list of full paths to the image files to delete.
+    """
+    for image_file in image_files:
+        try:
+            os.remove(image_file)
+        except OSError as e:
+            print(f"Error deleting file {image_file}: {e}")

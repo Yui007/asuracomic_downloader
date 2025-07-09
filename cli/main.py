@@ -10,7 +10,7 @@ from core.downloader import download_chapter, download_images_batch
 from typing import List
 from cli.interactive import interactive_cli
 from utils import sanitizer
-from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files
+from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files, delete_images
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.config import MAX_WORKERS
 from playwright.sync_api import sync_playwright
@@ -80,6 +80,7 @@ def download(
     chapter_url: str = typer.Argument(..., help="The URL of the chapter to download."),
     output_dir: str = typer.Option("downloads", "--output", "-o", help="The directory to save the downloaded chapter."),
     format: str = typer.Option(None, "--format", "-f", help="The output format (pdf or cbz)."),
+    delete: bool = typer.Option(False, "--delete", "-d", help="Delete original images after conversion."),
     browser=None,
 ):
     """
@@ -124,6 +125,11 @@ def download(
         
         console.print(f"[bold green]Conversion complete![/] Saved to {output_path}")
 
+        if delete:
+            console.print(f"[bold blue]Deleting original images...[/]")
+            delete_images(image_files)
+            console.print(f"[bold green]Original images deleted.[/]")
+
 @app.command()
 def batch_download(
     manga_url: str = typer.Argument(..., help="The URL of the manga series on AsuraComic."),
@@ -131,6 +137,7 @@ def batch_download(
     output_dir: str = typer.Option("downloads", "--output", "-o", help="The directory to save the downloaded chapters."),
     all_chapters: bool = typer.Option(False, "--all", help="Download all chapters."),
     format: str = typer.Option(None, "--format", "-f", help="The output format (pdf or cbz)."),
+    delete: bool = typer.Option(False, "--delete", "-d", help="Delete original images after conversion."),
 ):
     """
     Download a batch of chapters from a manga series in parallel.
@@ -234,6 +241,11 @@ def batch_download(
                     break 
                 
                 console.print(f"Converted {chapter_folder} to {output_path}")
+
+                if delete:
+                    delete_images(image_files)
+                    console.print(f"Deleted original images from {chapter_folder}")
+
             except Exception as e:
                 console.print(f"[bold red]Failed to convert {chapter_folder}: {e}[/]")
 

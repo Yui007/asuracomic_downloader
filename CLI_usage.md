@@ -78,11 +78,13 @@ python cli/main.py download [OPTIONS] CHAPTER_URL
 **Options:**
 
 *   `--output, -o`: The directory to save the downloaded chapter. (Default: `downloads`)
+*   `--format, -f`: The output format (`pdf` or `cbz`). If provided, the downloaded chapter will be converted.
+*   `--delete, -d`: Delete the original image folder after a successful conversion. (Only works if `--format` is used)
 
 **Example:**
 
 ```bash
-python cli/main.py download "return-of-the-apocalypse-class-death-knight-bc6665d9/chapter/1" -o my_manga
+python cli/main.py download "return-of-the-apocalypse-class-death-knight-bc6665d9/chapter/1" -o my_manga --format pdf --delete
 ```
 
 ### `batch-download`
@@ -104,6 +106,8 @@ python cli/main.py batch-download [OPTIONS] MANGA_URL
 *   `--chapters, -c`: A comma-separated list of chapter numbers or a range (e.g., '1-5', '1,3,5').
 *   `--all`: Download all chapters.
 *   `--output, -o`: The directory to save the downloaded chapters. (Default: `downloads`)
+*   `--format, -f`: The output format (`pdf` or `cbz`). If provided, the downloaded chapters will be converted.
+*   `--delete, -d`: Delete the original image folders after a successful conversion. (Only works if `--format` is used)
 
 **Examples:**
 

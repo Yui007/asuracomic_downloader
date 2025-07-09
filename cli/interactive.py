@@ -10,7 +10,7 @@ from rich.prompt import Prompt
 import os
 from core import scraper, downloader
 from utils import logger, sanitizer
-from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files
+from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files, delete_images
 from playwright.sync_api import sync_playwright
 
 # Initialize Rich Console
@@ -148,6 +148,13 @@ def interactive_cli():
 
     if convert_choice != "none":
         format = convert_choice
+        
+        delete_choice = Prompt.ask(
+            "Do you want to delete the original image folders after conversion?",
+            choices=["yes", "no"],
+            default="no"
+        )
+        
         console.print(f"[bold blue]Converting chapters to {format}...[/]")
         
         downloaded_chapter_folders = sorted(list(set(item[1] for item in images_to_download)))
@@ -169,6 +176,11 @@ def interactive_cli():
                     convert_to_cbz(image_files, output_path)
                 
                 console.print(f"Converted {chapter_folder} to {output_path}")
+
+                if delete_choice == "yes":
+                    delete_images(image_files)
+                    console.print(f"Deleted original images from {chapter_folder}")
+
             except Exception as e:
                 console.print(f"[bold red]Failed to convert {chapter_folder}: {e}[/]")
 
