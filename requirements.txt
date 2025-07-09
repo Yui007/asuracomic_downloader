@@ -1,0 +1,6 @@
+typer
+rich
+requests
+beautifulsoup4
+colorlog
+playwright
