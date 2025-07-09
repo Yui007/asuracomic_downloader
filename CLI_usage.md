@@ -87,7 +87,7 @@ python cli/main.py download "return-of-the-apocalypse-class-death-knight-bc6665d
 
 ### `batch-download`
 
-Downloads a batch of chapters from a manga series, either by a range, a specific list, or all at once.
+Downloads a batch of chapters from a manga series in parallel for faster performance. You can download by a range, a specific list, or all at once.
 
 **Usage:**
 
@@ -124,7 +124,7 @@ python cli/main.py batch-download [OPTIONS] MANGA_URL
 
 ### `interactive`
 
-Launches an interactive CLI to browse and download manga.
+Launches an interactive CLI to browse and download manga, with support for parallel downloads.
 
 **Usage:**
 

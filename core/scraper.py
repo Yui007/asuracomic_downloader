@@ -44,25 +44,36 @@ def scrape_chapter_links(manga_url: str) -> List[str]:
         
     return chapter_links[::-1]
 
-def fetch_chapter_images(chapter_url: str) -> List[str]:
+def fetch_chapter_images(chapter_url: str, browser=None) -> List[str]:
     """
     Scrapes all image links from a chapter page using Playwright.
+    If a browser instance is provided, it uses it; otherwise, it creates a new one.
     """
     logger.info(f"Scraping images from {chapter_url}")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+
+    def scrape_action(p_browser):
+        page = p_browser.new_page()
         try:
-            page.goto(chapter_url, wait_until='networkidle')
-            page.wait_for_selector('img.object-cover.mx-auto')
+            page.goto(chapter_url, wait_until='networkidle', timeout=60000)  # Increased timeout
+            page.wait_for_selector('img.object-cover.mx-auto', timeout=10000)
             image_urls = page.eval_on_selector_all('img.object-cover.mx-auto', 'elements => elements.map(el => el.src)')
-            logger.info(f"Found {len(image_urls)} images.")
+            logger.info(f"Found {len(image_urls)} images in {chapter_url}")
             return image_urls
         except Exception as e:
             logger.error(f"Error scraping images from {chapter_url}: {e}")
             return []
         finally:
-            browser.close()
+            page.close()
+
+    if browser:
+        return scrape_action(browser)
+    else:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                return scrape_action(browser)
+            finally:
+                browser.close()
 
 async def search_manga_async(query: str, page_limit: int = 1) -> List[dict]:
     """

@@ -7,9 +7,10 @@ Interactive CLI for AsuraComic Downloader.
 import typer
 from rich.console import Console
 from rich.prompt import Prompt
-
+import os
 from core import scraper, downloader
 from utils import logger, sanitizer
+from playwright.sync_api import sync_playwright
 
 # Initialize Rich Console
 console = Console()
@@ -111,24 +112,29 @@ def interactive_cli():
             return
 
     # Start download process
-    for chapter_url in selected_chapters:
-        console.print(f"\n[bold cyan]Downloading chapter: {chapter_url}[/bold cyan]")
-        
-        # Fetch image URLs
-        with console.status("[bold green]Fetching image links..."):
-            image_urls = scraper.fetch_chapter_images(chapter_url)
+    images_to_download = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        console.print("[bold blue]Scraping image URLs for all selected chapters...[/]")
+        for chapter_url in selected_chapters:
+            image_urls = scraper.fetch_chapter_images(chapter_url, browser=browser)
+            if image_urls:
+                try:
+                    manga_name = sanitizer.sanitize_filename(manga_url.split('/series/')[1].split('/')[0])
+                    chapter_name = sanitizer.sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
+                    chapter_folder = os.path.join(download_path, manga_name, chapter_name)
+                    for i, url in enumerate(image_urls):
+                        images_to_download.append((url, chapter_folder, f"page_{i+1}.jpg"))
+                except IndexError:
+                    console.print(f"[bold red]Could not determine manga/chapter name from URL: {chapter_url}[/]")
+        browser.close()
 
-        if not image_urls:
-            console.print("[bold red]Could not find any images for this chapter.[/bold red]")
-            continue
+    if not images_to_download:
+        console.print("[bold red]No images found to download.[/bold red]")
+        return
 
-        # Create chapter folder
-        manga_title = sanitizer.sanitize_filename(manga_url.split('/')[-1])
-        chapter_name = sanitizer.sanitize_filename(chapter_url.split('/')[-1])
-        chapter_folder = f"{download_path}/{manga_title}/{chapter_name}"
-
-        # Download chapter
-        downloader.download_chapter(image_urls, chapter_folder)
+    console.print(f"[bold yellow]Found {len(images_to_download)} images to download.[/]")
+    downloader.download_images_batch(images_to_download)
 
     console.print("\n[bold green]All selected chapters have been downloaded![/bold green]")
 
