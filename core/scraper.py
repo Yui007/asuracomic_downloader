@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Optional
+from urllib.parse import urljoin
 from utils.logger import setup_logger
 
 # Setting up logger
@@ -32,7 +33,8 @@ def scrape_chapter_links(manga_url: str) -> List[str]:
     # The selector is based on the provided HTML snippet
     chapter_elements = soup.select('div.pl-4.py-2.border.rounded-md a')
     
-    chapter_links = [element['href'] for element in chapter_elements if element.has_attr('href')]
+    # Use the manga_url as the base to correctly resolve relative chapter links
+    chapter_links = [urljoin(manga_url, element['href']) for element in chapter_elements if element.has_attr('href')]
     
     if not chapter_links:
         logger.warning("No chapter links found. The selector might be outdated.")

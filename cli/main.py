@@ -7,10 +7,19 @@ from rich.table import Table
 from core.scraper import scrape_chapter_links, fetch_chapter_images
 from core.downloader import download_chapter
 from typing import List
+from cli.interactive import interactive_cli
+from utils import sanitizer
 
 
 app = typer.Typer()
 console = Console()
+
+@app.command()
+def interactive():
+    """
+    Launch the interactive CLI mode.
+    """
+    interactive_cli()
 
 @app.command()
 def get_chapters(
@@ -45,10 +54,6 @@ def download(
     """
     console.print(f"[bold green]Downloading chapter from:[/] {chapter_url}")
     
-    # Ensure the URL is absolute
-    if not chapter_url.startswith('http'):
-        chapter_url = f"https://asuracomic.net/series/{chapter_url}"
-        
     image_urls = fetch_chapter_images(chapter_url)
     
     if not image_urls:
@@ -57,8 +62,8 @@ def download(
         
     # Extract manga and chapter name for folder creation
     try:
-        manga_name = chapter_url.split('/series/')[1].split('/')[0]
-        chapter_name = chapter_url.split('/chapter/')[1].replace('/', '')
+        manga_name = sanitizer.sanitize_filename(chapter_url.split('/series/')[1].split('/')[0])
+        chapter_name = sanitizer.sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
         chapter_folder = os.path.join(output_dir, manga_name, chapter_name)
     except IndexError:
         console.print("[bold red]Could not determine manga/chapter name from URL. Using default folder.[/]")
