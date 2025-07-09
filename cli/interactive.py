@@ -22,8 +22,37 @@ def interactive_cli():
     console.print("[bold cyan]AsuraComic Downloader - Interactive Mode[/bold cyan]")
     console.print("Welcome! This wizard will guide you through downloading your favorite manga.")
 
-    # Get manga URL from user
-    manga_url = Prompt.ask("Enter the manga series URL")
+    # Ask user if they want to search or use a URL
+    choice = Prompt.ask("Do you want to search for a manga or enter a URL directly?", choices=["search", "url"], default="search")
+
+    if choice == "search":
+        query = Prompt.ask("Enter the manga name to search for")
+        with console.status(f"[bold green]Searching for '{query}'..."):
+            search_results = scraper.search_manga(query)
+
+        if not search_results:
+            console.print("[bold red]No manga found for your query.[/bold red]")
+            return
+
+        table = Table(title="Search Results")
+        table.add_column("Num", style="cyan")
+        table.add_column("Title", style="magenta")
+        table.add_column("Latest Chapter", style="yellow")
+        table.add_column("Link", style="green")
+
+        for i, result in enumerate(search_results, 1):
+            table.add_row(str(i), result['title'], result['latest_chapter'], result['link'])
+        
+        console.print(table)
+
+        selection = Prompt.ask("Enter the number of the manga you want to download", default="1")
+        try:
+            manga_url = search_results[int(selection) - 1]['link']
+        except (ValueError, IndexError):
+            console.print("[bold red]Invalid selection.[/bold red]")
+            return
+    else:
+        manga_url = Prompt.ask("Enter the manga series URL")
 
     # Fetch chapter links
     with console.status("[bold green]Fetching chapter list..."):

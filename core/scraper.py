@@ -41,7 +41,8 @@ def scrape_chapter_links(manga_url: str) -> List[str]:
     else:
         logger.info(f"Found {len(chapter_links)} chapter links.")
         
-    return chapter_links
+    # Reverse the list to show chapters in ascending order
+    return chapter_links[::-1]
 
 from playwright.sync_api import sync_playwright
 
@@ -69,6 +70,64 @@ def fetch_chapter_images(chapter_url: str) -> List[str]:
         finally:
             browser.close()
 
+def search_manga(query: str) -> List[dict]:
+    """
+    Searches for a manga on AsuraComic and returns a list of dictionaries
+    with title, latest_chapter, and link.
+    """
+    # URL-encode the query
+    query = query.replace(" ", "+")
+    search_url = f"https://asuracomic.net/series?page=1&name={query}"
+    
+    logger.info(f"Searching for manga: '{query}'")
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        try:
+            page.goto(search_url, wait_until='networkidle')
+            html_content = page.content()
+        except Exception as e:
+            logger.error(f"Error fetching search page with Playwright: {e}")
+            return []
+        finally:
+            browser.close()
+
+    if not html_content:
+        logger.error("Failed to fetch search page HTML with Playwright.")
+        return []
+
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    results = []
+    
+    # The selector is based on the provided HTML snippet
+    manga_elements = soup.select('div.grid a[href*="/series/"]')
+
+    for element in manga_elements:
+        title_element = element.select_one('span.font-bold')
+        if not title_element:
+            continue
+        
+        title = title_element.text.strip()
+        
+        link = element['href']
+        
+        latest_chapter_element = title_element.find_next_sibling('span')
+        latest_chapter = latest_chapter_element.text.strip() if latest_chapter_element else "No chapter found"
+
+        results.append({
+            "title": title,
+            "latest_chapter": latest_chapter,
+            "link": urljoin(search_url, link)
+        })
+
+    if not results:
+        logger.warning(f"No manga found for '{query}'. The selectors might be outdated.")
+    else:
+        logger.info(f"Found {len(results)} manga for '{query}'.")
+        
+    return results
 if __name__ == '__main__':
     # Example usage for testing
     test_url = "https://asuracomic.net/series/return-of-the-apocalypse-class-death-knight-bc6665d9"

@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import typer
 from rich.console import Console
 from rich.table import Table
-from core.scraper import scrape_chapter_links, fetch_chapter_images
+from core.scraper import scrape_chapter_links, fetch_chapter_images, search_manga
 from core.downloader import download_chapter
 from typing import List
 from cli.interactive import interactive_cli
@@ -20,6 +20,31 @@ def interactive():
     Launch the interactive CLI mode.
     """
     interactive_cli()
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="The search query for the manga."),
+):
+    """
+    Search for a manga on AsuraComic.
+    """
+    console.print(f"[bold green]Searching for:[/] {query}")
+    
+    search_results = search_manga(query)
+    
+    if not search_results:
+        console.print("[bold red]No manga found for your query.[/]")
+        raise typer.Exit()
+        
+    table = Table(title="Search Results")
+    table.add_column("Title", justify="left", style="cyan", no_wrap=True)
+    table.add_column("Latest Chapter", justify="left", style="magenta")
+    table.add_column("Link", justify="left", style="green")
+    
+    for result in search_results:
+        table.add_row(result['title'], result['latest_chapter'], result['link'])
+        
+    console.print(table)
 
 @app.command()
 def get_chapters(
