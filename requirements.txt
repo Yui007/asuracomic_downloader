@@ -6,3 +6,4 @@ colorlog
 playwright
 Pillow
 natsort
+PyQt5
