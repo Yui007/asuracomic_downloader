@@ -95,6 +95,9 @@ class AsuraComicDownloaderGUI(QMainWindow):
                 selection-background-color: rgba(255, 255, 255, 80);
                 color: white;
             }
+            QCheckBox {
+                color: white;
+            }
         """
         self.setStyleSheet(style_sheet)
 
@@ -277,7 +280,6 @@ class AsuraComicDownloaderGUI(QMainWindow):
         manga_data = item.data(Qt.UserRole)
         if manga_data:
             self.manga_url_input.setText(manga_data['link'])
-            QMessageBox.information(self, "URL Set", f"Manga URL for '{manga_data['title']}' has been set in the Download section.")
 
     def perform_search(self):
         query = self.search_query_input.text()
