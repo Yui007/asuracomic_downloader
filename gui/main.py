@@ -81,6 +81,20 @@ class AsuraComicDownloaderGUI(QMainWindow):
                 padding: 5px;
                 color: white;
             }
+            QComboBox {
+                background-color: rgba(255, 255, 255, 50);
+                border: 1px solid rgba(255, 255, 255, 100);
+                border-radius: 5px;
+                padding: 5px;
+                color: white;
+                selection-background-color: rgba(255, 255, 255, 120);
+            }
+            QComboBox QAbstractItemView {
+                background-color: rgba(40, 40, 40, 220);
+                border: 1px solid rgba(255, 255, 255, 100);
+                selection-background-color: rgba(255, 255, 255, 80);
+                color: white;
+            }
         """
         self.setStyleSheet(style_sheet)
 
@@ -106,8 +120,8 @@ class AsuraComicDownloaderGUI(QMainWindow):
         self.search_button.clicked.connect(self.perform_search)
         search_layout.addWidget(self.search_button)
 
-        self.search_results_display = QTextEdit()
-        self.search_results_display.setReadOnly(True)
+        self.search_results_display = QListWidget()
+        self.search_results_display.itemClicked.connect(self.search_result_clicked)
         search_layout.addWidget(self.search_results_display)
 
         search_group_box.setLayout(search_layout)
@@ -259,14 +273,22 @@ class AsuraComicDownloaderGUI(QMainWindow):
         QMessageBox.critical(self, "Get Chapters Error", error_message)
         self.download_status_display.append(f"Error fetching chapters: {error_message}")
 
+    def search_result_clicked(self, item):
+        manga_data = item.data(Qt.UserRole)
+        if manga_data:
+            self.manga_url_input.setText(manga_data['link'])
+            QMessageBox.information(self, "URL Set", f"Manga URL for '{manga_data['title']}' has been set in the Download section.")
+
     def perform_search(self):
         query = self.search_query_input.text()
         pages = self.search_pages_input.text()
         if not query:
-            self.search_results_display.setText("Please enter a manga query.")
+            self.search_results_display.clear()
+            self.search_results_display.addItem("Please enter a manga query.")
             return
 
-        self.search_results_display.setText(f"Searching for '{query}' across {pages} pages...")
+        self.search_results_display.clear()
+        self.search_results_display.addItem(f"Searching for '{query}' across {pages} pages...")
         
         # Create a worker thread for the search operation
         self.search_thread = SearchWorker(query, int(pages))
@@ -276,19 +298,22 @@ class AsuraComicDownloaderGUI(QMainWindow):
         self.search_thread.start()
 
     def display_search_results(self, results):
-        self.search_button.setEnabled(True) # Re-enable button
+        self.search_button.setEnabled(True)
+        self.search_results_display.clear()
         if results:
-            formatted_results = []
-            for i, result in enumerate(results, 1):
-                formatted_results.append(f"{i}. Title: {result['title']}\n   Latest Chapter: {result['latest_chapter']}\n   Link: {result['link']}\n")
-            self.search_results_display.setText("\n".join(formatted_results))
+            for result in results:
+                item_text = f"{result['title']} - {result['latest_chapter']}"
+                item = QListWidgetItem(item_text)
+                item.setData(Qt.UserRole, result)
+                self.search_results_display.addItem(item)
         else:
-            self.search_results_display.setText("No manga found for your query.")
+            self.search_results_display.addItem("No manga found for your query.")
 
     def handle_search_error(self, error_message):
         self.search_button.setEnabled(True) # Re-enable button
         QMessageBox.critical(self, "Search Error", error_message)
-        self.search_results_display.setText(f"Error during search: {error_message}")
+        self.search_results_display.clear()
+        self.search_results_display.addItem(f"Error during search: {error_message}")
 
 class SearchWorker(QThread):
     search_finished = pyqtSignal(list)
