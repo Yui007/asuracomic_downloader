@@ -285,6 +285,11 @@ class AsuraComicDownloaderGUI(QMainWindow):
         else:
             self.search_results_display.setText("No manga found for your query.")
 
+    def handle_search_error(self, error_message):
+        self.search_button.setEnabled(True) # Re-enable button
+        QMessageBox.critical(self, "Search Error", error_message)
+        self.search_results_display.setText(f"Error during search: {error_message}")
+
 class SearchWorker(QThread):
     search_finished = pyqtSignal(list)
     search_error = pyqtSignal(str)
