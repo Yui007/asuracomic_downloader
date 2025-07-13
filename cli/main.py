@@ -212,44 +212,14 @@ def batch_download(
         raise typer.Exit()
 
     console.print(f"[bold yellow]Found {len(images_to_download)} images to download.[/]")
-    download_images_batch(images_to_download)
+    download_images_batch(
+        images_to_download,
+        format,
+        delete,
+        status_callback=console.print
+    )
 
     console.print("[bold green]Batch download complete![/]")
-
-    if format:
-        console.print(f"[bold blue]Converting chapters to {format}...[/]")
-        
-        downloaded_chapter_folders = set(item[1] for item in images_to_download)
-
-        for chapter_folder in downloaded_chapter_folders:
-            image_files = get_image_files(chapter_folder)
-            if not image_files:
-                console.print(f"[bold red]No images found in {chapter_folder} to convert.[/]")
-                continue
-
-            try:
-                manga_name = os.path.basename(os.path.dirname(chapter_folder))
-                chapter_name = os.path.basename(chapter_folder)
-                output_path = os.path.join(output_dir, manga_name, f"{chapter_name}.{format}")
-
-                if format.lower() == 'pdf':
-                    convert_to_pdf(image_files, output_path)
-                elif format.lower() == 'cbz':
-                    convert_to_cbz(image_files, output_path)
-                else:
-                    console.print(f"[bold red]Invalid format: {format}. Please use 'pdf' or 'cbz'.[/]")
-                    break 
-                
-                console.print(f"Converted {chapter_folder} to {output_path}")
-
-                if delete:
-                    delete_images(image_files)
-                    console.print(f"Deleted original images from {chapter_folder}")
-
-            except Exception as e:
-                console.print(f"[bold red]Failed to convert {chapter_folder}: {e}[/]")
-
-        console.print(f"[bold green]Conversion complete![/]")
 
 if __name__ == "__main__":
     app()

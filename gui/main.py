@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QCheckBox, QComboBox, QHBoxLayout, QFileDialog, QGroupBox, QMessageBox, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QLineEdit, QPushButton, QTextEdit, QCheckBox, QComboBox, QHBoxLayout, QFileDialog, QGroupBox, QMessageBox, QListWidget, QListWidgetItem, QProgressBar
 from PyQt5.QtGui import QPalette, QBrush, QPixmap, QIntValidator
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import os
@@ -98,6 +98,15 @@ class AsuraComicDownloaderGUI(QMainWindow):
             QCheckBox {
                 color: white;
             }
+            QProgressBar {
+                border: 1px solid rgba(255, 255, 255, 100);
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+            }
+            QProgressBar::chunk {
+                background-color: rgba(0, 255, 0, 150);
+            }
         """
         self.setStyleSheet(style_sheet)
 
@@ -182,6 +191,9 @@ class AsuraComicDownloaderGUI(QMainWindow):
         self.download_button.clicked.connect(self.perform_batch_download)
         download_layout.addWidget(self.download_button)
 
+        self.progress_bar = QProgressBar()
+        download_layout.addWidget(self.progress_bar)
+
         self.download_status_display = QTextEdit()
         self.download_status_display.setReadOnly(True)
         download_layout.addWidget(self.download_status_display)
@@ -226,12 +238,18 @@ class AsuraComicDownloaderGUI(QMainWindow):
         chapters_selection = ",".join(map(str, selected_indices))
 
         self.download_status_display.setText(f"Starting batch download for: {manga_url}...")
+        self.progress_bar.setValue(0)
         
         self.batch_download_thread = BatchDownloadWorker(manga_url, chapters_selection, False, output_dir, format_choice, delete_original)
         self.batch_download_thread.batch_download_finished.connect(self.display_batch_download_status)
         self.batch_download_thread.batch_download_error.connect(self.handle_batch_download_error)
+        self.batch_download_thread.progress_signal.connect(self.update_progress_bar)
         self.download_button.setEnabled(False)
         self.batch_download_thread.start()
+
+    def update_progress_bar(self, value, total):
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(value)
 
     def display_batch_download_status(self, message):
         self.download_button.setEnabled(True)
@@ -351,6 +369,7 @@ class GetChaptersWorker(QThread):
 class BatchDownloadWorker(QThread):
     batch_download_finished = pyqtSignal(str)
     batch_download_error = pyqtSignal(str)
+    progress_signal = pyqtSignal(int, int)
 
     def __init__(self, manga_url, chapters_selection, all_chapters, output_dir, format_choice, delete_original):
         super().__init__()
@@ -403,44 +422,34 @@ class BatchDownloadWorker(QThread):
             manga_output_dir = os.path.join(self.output_dir, manga_name)
             os.makedirs(manga_output_dir, exist_ok=True)
 
+            images_to_download = []
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
+                self.batch_download_finished.emit("Scraping image URLs for all chapters...")
                 for chapter_url in selected_chapters_urls:
-                    try:
-                        chapter_name = sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
-                        chapter_folder = os.path.join(manga_output_dir, chapter_name)
-                        
-                        self.batch_download_finished.emit(f"Downloading {chapter_name}...")
-                        
-                        image_urls = fetch_chapter_images(chapter_url, browser=browser)
-                        if not image_urls:
-                            self.batch_download_finished.emit(f"No images found for {chapter_name}. Skipping.")
-                            continue
-
-                        download_chapter(image_urls, chapter_folder)
-                        self.batch_download_finished.emit(f"Finished downloading {chapter_name}.")
-
-                        if self.format_choice != "None":
-                            self.batch_download_finished.emit(f"Converting {chapter_name} to {self.format_choice}...")
-                            image_files = [os.path.join(chapter_folder, f) for f in sorted(os.listdir(chapter_folder)) if f.endswith(('.jpg', '.png', '.jpeg'))]
-                            if image_files:
-                                output_path = os.path.join(manga_output_dir, f"{chapter_name}.{self.format_choice}")
-                                if self.format_choice.lower() == 'pdf':
-                                    convert_to_pdf(image_files, output_path)
-                                elif self.format_choice.lower() == 'cbz':
-                                    convert_to_cbz(image_files, output_path)
-                                self.batch_download_finished.emit(f"Conversion complete for {chapter_name}.")
-
-                                if self.delete_original:
-                                    self.batch_download_finished.emit(f"Deleting original images for {chapter_name}...")
-                                    for f in image_files:
-                                        os.remove(f)
-                                    os.rmdir(chapter_folder)
-                                    self.batch_download_finished.emit(f"Original images for {chapter_name} deleted.")
-                    except Exception as e:
-                        self.batch_download_error.emit(f"Error processing chapter {chapter_url}: {str(e)}")
+                    image_urls = fetch_chapter_images(chapter_url, browser=browser)
+                    if image_urls:
+                        try:
+                            chapter_name = sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
+                            chapter_folder = os.path.join(manga_output_dir, chapter_name)
+                            for i, url in enumerate(image_urls):
+                                images_to_download.append((url, chapter_folder, f"page_{i+1}.jpg"))
+                        except IndexError:
+                            self.batch_download_error.emit(f"Could not determine manga/chapter name from URL: {chapter_url}")
                 browser.close()
-            self.batch_download_finished.emit("Batch download complete.")
+
+            if not images_to_download:
+                self.batch_download_error.emit("No images found to download.")
+                return
+
+            self.batch_download_finished.emit(f"Found {len(images_to_download)} images to download.")
+            download_images_batch(
+                images_to_download,
+                self.format_choice,
+                self.delete_original,
+                progress_callback=self.progress_signal.emit,
+                status_callback=self.batch_download_finished.emit
+            )
         except Exception as e:
             self.batch_download_error.emit(str(e))
 
