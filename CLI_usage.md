@@ -2,7 +2,9 @@
 
 This document provides instructions on how to use the command-line interface (CLI) of the AsuraComic Downloader.
 
-## Installation
+## Installation and operation
+
+### Running in local python
 
 1.  Clone the repository:
     ```bash
@@ -14,6 +16,25 @@ This document provides instructions on how to use the command-line interface (CL
     ```bash
     pip install -r requirements.txt
     ```
+
+### Docker compose
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/your-username/asuracomic-downloader.git
+    cd asuracomic-downloader
+    ```
+
+2.  Build via docker compose:
+    ```bash
+    docker compose build
+    ```
+
+## Running commands via docker
+
+```bash
+docker compose run asura-comic-download-cli [COMMAND] [OPTIONS]
+```
 
 ## Commands
 
