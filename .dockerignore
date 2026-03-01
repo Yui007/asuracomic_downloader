@@ -1,0 +1,8 @@
+.git
+gui/
+assets/
+__pycache__
+*.pyc
+*.pyo
+output/
+downloads/
