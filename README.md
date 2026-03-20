@@ -3,7 +3,7 @@
 
 ## Introduction
 
-AsuraComic Downloader is a versatile tool designed to simplify the process of downloading manga from AsuraComic.net. It offers both a powerful command-line interface (CLI) for automation and an intuitive graphical user interface (GUI) for ease of use, allowing users to search, browse, and download manga chapters efficiently.
+AsuraComic Downloader is a versatile tool designed to simplify the process of downloading manga from AsuraComic / AsuraScans. It offers both a powerful command-line interface (CLI) for automation and an intuitive graphical user interface (GUI) for ease of use, allowing users to search, browse, and download manga chapters efficiently.
 
 ## Features
 
@@ -31,7 +31,7 @@ The GUI offers a user-friendly experience with visual controls for all core func
 
 ## Installation
 
-To get started with AsuraComic Downloader, follow these steps:
+To get started with AsuraComic Downloader, follow these steps carefully.
 
 1.  **Clone the repository:**
     ```bash
@@ -39,10 +39,28 @@ To get started with AsuraComic Downloader, follow these steps:
     cd asuracomic_downloader
     ```
 
-2.  **Install dependencies:**
+2.  **Create a virtual environment (recommended):**
+    ```bash
+    python -m venv .venv
+
+    # Windows
+    .venv\Scripts\activate
+
+    # Linux/Mac
+    source .venv/bin/activate
+    ```
+
+3.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
+
+4.  **Install Playwright browsers (important):**
+    ```bash
+    python -m playwright install
+    ```
+
+Note: Without this step, dynamic scraping will fail.
 
 ## Usage
 
@@ -65,7 +83,9 @@ From the GUI, you can:
 
 ### CLI Usage
 
-The CLI provides several commands for direct interaction:
+The CLI provides several commands for direct interaction.
+
+Note: Asura domains frequently change between `.net`, `.com`, and other variants. Adjust the URL based on the current active site.
 
 *   **Search for Manga:**
     ```bash
@@ -102,21 +122,32 @@ The CLI provides several commands for direct interaction:
 
 For detailed CLI usage instructions and examples, please refer to the [CLI_usage.md](CLI_usage.md) file.
 
-## Technologies Used
+## Important Notes
 
-*   **Python:** The core programming language.
-*   **PyQt5:** For building the graphical user interface.
-*   **Typer:** For building the command-line interface.
-*   **Playwright:** For web scraping and browser automation.
-*   **Pillow:** For image processing and conversion.
-*   **Requests:** For making HTTP requests.
-*   **BeautifulSoup4:** For parsing HTML and XML documents.
-*   **Colorlog:** For colored logging in the console.
-*   **Natsort:** For natural sorting of lists.
+*   **Dynamic Loading:** This tool uses Playwright (browser automation) instead of static scraping. This is required because AsuraScans loads content and images dynamically via JavaScript.
+*   **Download Speeds:** Large batch downloads may take time depending on your system, internet speed, and current host server load.
+
+## Technologies and Dependencies Used
+
+| Package | Purpose | Recommended Version |
+| --- | --- | --- |
+| Python | Core programming language | 3.8+ |
+| PyQt5 | GUI framework | >=5.15.0 |
+| Typer | CLI framework | >=0.9.0 |
+| Playwright | Dynamic scraping engine | >=1.40.0 |
+| BeautifulSoup4 | HTML/XML parsing | >=4.12.0 |
+| Pillow | Image processing and conversion | >=10.0.0 |
+| Requests | HTTP fallback/requests | >=2.31.0 |
+| Rich | CLI UI enhancement | >=13.7.0 |
+| Colorlog | Colored logging in console | >=6.7.0 |
+| Natsort | Natural sorting of chapters | >=8.4.0 |
 
 ## Contributing
 
-Contributions are welcome! If you have suggestions for improvements, bug reports, or want to contribute code, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/Yui007/asuracomic_downloader).
+Contributions are welcome. If you have suggestions for improvements, bug reports, or want to contribute code:
+
+*   Open an issue for bugs or suggestions.
+*   Submit a pull request on the [GitHub repository](https://github.com/Yui007/asuracomic_downloader).
 
 ## License
 

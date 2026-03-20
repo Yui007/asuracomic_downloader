@@ -14,10 +14,25 @@ from utils.converter import convert_to_cbz, convert_to_pdf, get_image_files, del
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.config import MAX_WORKERS
 from playwright.sync_api import sync_playwright
+from urllib.parse import urlparse
 
 
 app = typer.Typer()
 console = Console()
+
+
+def parse_manga_chapter(chapter_url: str, output_dir: str):
+    """
+    Parse manga name and chapter name from an AsuraScans chapter URL.
+    URL format: https://asurascans.com/comics/<manga-slug>/chapter/<num>
+    Returns (chapter_folder,) or raises IndexError on bad URL.
+    """
+    parts = urlparse(chapter_url).path.strip("/").split("/")
+    # parts = ['comics', 'manga-slug', 'chapter', '1']
+    manga_name = sanitizer.sanitize_filename(parts[1])
+    chapter_name = sanitizer.sanitize_filename(f"chapter_{parts[-1]}")
+    return os.path.join(output_dir, manga_name, chapter_name)
+
 
 @app.command()
 def interactive():
@@ -25,6 +40,7 @@ def interactive():
     Launch the interactive CLI mode.
     """
     interactive_cli()
+
 
 @app.command()
 def search(
@@ -35,22 +51,23 @@ def search(
     Search for a manga on AsuraComic.
     """
     console.print(f"[bold green]Searching for:[/] {query}")
-    
+
     search_results = search_manga(query, page_limit=pages)
-    
+
     if not search_results:
         console.print("[bold red]No manga found for your query.[/]")
         raise typer.Exit()
-        
+
     table = Table(title="Search Results")
     table.add_column("Title", justify="left", style="cyan", no_wrap=True)
     table.add_column("Latest Chapter", justify="left", style="magenta")
     table.add_column("Link", justify="left", style="green")
-    
+
     for result in search_results:
         table.add_row(result['title'], result['latest_chapter'], result['link'])
-        
+
     console.print(table)
+
 
 @app.command()
 def get_chapters(
@@ -60,20 +77,21 @@ def get_chapters(
     Scrape and list all chapter links from a given manga URL.
     """
     console.print(f"[bold green]Scraping chapters from:[/] {url}")
-    
+
     chapter_links = scrape_chapter_links(url)
-    
+
     if not chapter_links:
         console.print("[bold red]No chapters found. Check the URL or the site's structure.[/]")
         raise typer.Exit()
-        
+
     table = Table(title="Available Chapters")
     table.add_column("Chapter Link", justify="left", style="cyan", no_wrap=True)
-    
+
     for link in chapter_links:
         table.add_row(link)
-        
+
     console.print(table)
+
 
 @app.command()
 def download(
@@ -87,24 +105,22 @@ def download(
     Download a single chapter from AsuraComic.
     """
     console.print(f"[bold green]Downloading chapter from:[/] {chapter_url}")
-    
+
     image_urls = fetch_chapter_images(chapter_url, browser=browser)
-    
+
     if not image_urls:
         console.print(f"[bold red]No images found for chapter: {chapter_url}[/]")
         return
-        
-    # Extract manga and chapter name for folder creation
+
+    # ✅ FIXED: use urlparse instead of /series/ split
     try:
-        manga_name = sanitizer.sanitize_filename(chapter_url.split('/series/')[1].split('/')[0])
-        chapter_name = sanitizer.sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
-        chapter_folder = os.path.join(output_dir, manga_name, chapter_name)
-    except IndexError:
+        chapter_folder = parse_manga_chapter(chapter_url, output_dir)
+    except (IndexError, ValueError):
         console.print("[bold red]Could not determine manga/chapter name from URL. Using default folder.[/]")
         chapter_folder = os.path.join(output_dir, "unknown_chapter")
 
     download_chapter(image_urls, chapter_folder)
-    
+
     console.print(f"[bold green]Download complete![/] Chapter saved to {chapter_folder}")
 
     if format:
@@ -114,7 +130,11 @@ def download(
             console.print(f"[bold red]No images found in {chapter_folder} to convert.[/]")
             return
 
+        parts = urlparse(chapter_url).path.strip("/").split("/")
+        manga_name = sanitizer.sanitize_filename(parts[1])
+        chapter_name = sanitizer.sanitize_filename(f"chapter_{parts[-1]}")
         output_path = os.path.join(output_dir, manga_name, f"{chapter_name}.{format}")
+
         if format.lower() == 'pdf':
             convert_to_pdf(image_files, output_path)
         elif format.lower() == 'cbz':
@@ -122,13 +142,14 @@ def download(
         else:
             console.print(f"[bold red]Invalid format: {format}. Please use 'pdf' or 'cbz'.[/]")
             return
-        
+
         console.print(f"[bold green]Conversion complete![/] Saved to {output_path}")
 
         if delete:
             console.print(f"[bold blue]Deleting original images...[/]")
             delete_images(image_files)
             console.print(f"[bold green]Original images deleted.[/]")
+
 
 @app.command()
 def batch_download(
@@ -150,6 +171,7 @@ def batch_download(
         raise typer.Exit()
 
     links_to_download = []
+
     if all_chapters:
         links_to_download = all_chapter_links
     elif chapters:
@@ -171,11 +193,7 @@ def batch_download(
         for link in all_chapter_links:
             try:
                 chapter_num_str = link.split('/chapter/')[1].replace('/', '')
-                if '.' in chapter_num_str:
-                    chapter_num = float(chapter_num_str)
-                else:
-                    chapter_num = int(chapter_num_str)
-                
+                chapter_num = float(chapter_num_str) if '.' in chapter_num_str else int(chapter_num_str)
                 if chapter_num in selected_chapters:
                     links_to_download.append(link)
             except (IndexError, ValueError):
@@ -188,23 +206,30 @@ def batch_download(
         console.print("[bold red]None of the specified chapters were found.[/]")
         raise typer.Exit()
 
-    console.print(f"[bold yellow]Found {len(links_to_download)} chapters to download.[/]")
+    console.print(f"Found {len(links_to_download)} chapters to download.")
 
     images_to_download = []
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        console.print("[bold blue]Scraping image URLs for all chapters...[/]")
+        console.print("Scraping image URLs for all chapters...")
+
         for chapter_url in links_to_download:
             image_urls = fetch_chapter_images(chapter_url, browser=browser)
-            if image_urls:
-                try:
-                    manga_name = sanitizer.sanitize_filename(chapter_url.split('/series/')[1].split('/')[0])
-                    chapter_name = sanitizer.sanitize_filename(chapter_url.split('/chapter/')[1].replace('/', ''))
-                    chapter_folder = os.path.join(output_dir, manga_name, chapter_name)
-                    for i, url in enumerate(image_urls):
-                        images_to_download.append((url, chapter_folder, f"page_{i+1}.jpg"))
-                except IndexError:
-                    console.print(f"[bold red]Could not determine manga/chapter name from URL: {chapter_url}[/]")
+
+            if not image_urls:
+                console.print(f"[yellow]No images found for: {chapter_url}[/]")
+                continue
+
+            # ✅ FIXED: use urlparse to handle /comics/<slug>/chapter/<num> structure
+            try:
+                chapter_folder = parse_manga_chapter(chapter_url, output_dir)
+                for i, url in enumerate(image_urls):
+                    images_to_download.append((url, chapter_folder, f"page_{i+1}.jpg"))
+            except (IndexError, ValueError):
+                console.print(f"[bold red]Could not determine manga/chapter name from URL: \n{chapter_url}[/]")
+                continue
+
         browser.close()
 
     if not images_to_download:
@@ -212,6 +237,7 @@ def batch_download(
         raise typer.Exit()
 
     console.print(f"[bold yellow]Found {len(images_to_download)} images to download.[/]")
+
     download_images_batch(
         images_to_download,
         format,
@@ -220,6 +246,7 @@ def batch_download(
     )
 
     console.print("[bold green]Batch download complete![/]")
+
 
 if __name__ == "__main__":
     app()

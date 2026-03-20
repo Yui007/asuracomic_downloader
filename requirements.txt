@@ -7,3 +7,4 @@ playwright
 Pillow
 natsort
 PyQt5
+playwright
