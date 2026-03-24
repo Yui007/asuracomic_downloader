@@ -1,0 +1,105 @@
+/* src/gui/style.qss */
+QMainWindow {
+    background: #0f0f12;
+}
+
+QWidget {
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+}
+
+/* Sidebar */
+#sidebar {
+    background: #151520;
+    border-right: 1px solid #2a2a35;
+}
+
+QPushButton#nav_button {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+    color: #8888aa;
+}
+
+QPushButton#nav_button:hover {
+    background: #252545;
+    color: #ffffff;
+}
+
+QPushButton#nav_button:checked {
+    background: #3d3d6d;
+    color: #00d2ff;
+    border-left: 3px solid #00d2ff;
+}
+
+/* Glass Cards */
+#glass_card {
+    background: rgba(30, 30, 50, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+#manga_title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #00d2ff;
+}
+
+/* Inputs */
+QLineEdit {
+    background: #1a1a2e;
+    border: 1px solid #333344;
+    border-radius: 8px;
+    padding: 10px 15px;
+    color: #ffffff;
+}
+
+QLineEdit:focus {
+    border: 1px solid #00d2ff;
+}
+
+/* Buttons */
+QPushButton#primary_button {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00d2ff, stop:1 #00ffaa);
+    color: #000000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: bold;
+}
+
+QPushButton#primary_button:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00e0ff, stop:1 #00ffbb);
+}
+
+/* ScrollBars */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 8px;
+}
+
+QScrollBar::handle:vertical {
+    background: #333344;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+/* Tables */
+QTableWidget {
+    background: transparent;
+    border: none;
+    alternate-background-color: rgba(255, 255, 255, 0.02);
+}
+
+QHeaderView::section {
+    background: #1a1a2e;
+    color: #00d2ff;
+    padding: 8px;
+    border: none;
+    font-weight: bold;
+}

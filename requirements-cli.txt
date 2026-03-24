@@ -1,8 +1,0 @@
-typer
-rich
-requests
-beautifulsoup4
-colorlog
-playwright==1.49.0
-Pillow
-natsort

@@ -1,9 +1,8 @@
+requests
 typer
 rich
-requests
-beautifulsoup4
-colorlog
-playwright
-Pillow
-natsort
-PyQt5
+img2pdf
+pillow
+pydantic
+PyQt6
+qtawesome
