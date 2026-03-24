@@ -29,7 +29,7 @@ class AsuraAPI:
         return None
 
     def search(self, query: str) -> List[Manga]:
-        data = self._request("GET", "search", params={"query": query})
+        data = self._request("GET", "series", params={"search": query})
         if not data or "data" not in data:
             return []
         

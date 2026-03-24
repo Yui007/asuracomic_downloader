@@ -3,6 +3,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 import requests
 from io import BytesIO
+from PyQt6.QtCore import QThreadPool
+from .workers import TaskWorker
 
 class GlassCard(QFrame):
     def __init__(self, parent=None):
@@ -33,17 +35,15 @@ class MangaCard(GlassCard):
         self.main_layout.addWidget(self.title_label)
         self.main_layout.addStretch()
         
-        self.load_cover(manga.cover)
-
-    def load_cover(self, url):
-        # We should ideally do this in a thread, but for now...
-        try:
-            res = requests.get(url, timeout=5)
+        # Load cover asynchronously
+        worker = TaskWorker(requests.get, manga.cover, timeout=10)
+        def on_loaded(res):
             pix = QPixmap()
             pix.loadFromData(res.content)
             self.cover_label.setPixmap(pix)
-        except:
-            pass
+            
+        worker.signals.finished.connect(on_loaded)
+        QThreadPool.globalInstance().start(worker)
 
     def mousePressEvent(self, a0):
         self.clicked.emit(self.manga)
