@@ -1,0 +1,8 @@
+services:
+  asura-comic-download-cli:
+    build: .
+    volumes:
+      - ./output:/output
+    working_dir: /app
+    stdin_open: true
+    tty: true
